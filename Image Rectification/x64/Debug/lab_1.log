@@ -1,0 +1,25 @@
+﻿  Compiling CUDA source file kernel.cu...
+  
+  C:\Users\dgilbe9\source\repos\lab_1\lab_1>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\bin\nvcc.exe" -gencode=arch=compute_35,code=\"sm_35,compute_35\" --use-local-env -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\bin\HostX86\x64" -x cu  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DWIN32 -DWIN64 -D_DEBUG -D_CONSOLE -D_MBCS -Xcompiler "/EHsc /W3 /nologo /Od /Fdx64\Debug\vc142.pdb /FS /Zi /RTC1 /MDd " -o x64\Debug\kernel.cu.obj "C:\Users\dgilbe9\source\repos\lab_1\lab_1\kernel.cu" 
+C:/Users/dgilbe9/source/repos/lab_1/lab_1/kernel.cu(164): warning : variable "new_image" was declared but never referenced
+  
+  kernel.cu
+C:/Users/dgilbe9/source/repos/lab_1/lab_1/kernel.cu(73): warning C4018: '<': signed/unsigned mismatch
+C:/Users/dgilbe9/source/repos/lab_1/lab_1/kernel.cu(134): warning C4018: '<': signed/unsigned mismatch
+C:/Users/dgilbe9/source/repos/lab_1/lab_1/kernel.cu(179): warning C4018: '<': signed/unsigned mismatch
+C:/Users/dgilbe9/source/repos/lab_1/lab_1/kernel.cu(164): warning C4101: 'new_image': unreferenced local variable
+  test_equality.c
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(773,34): warning C4334:  '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(1437,29): warning C4267:  '=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(1441,31): warning C4267:  '=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(1479,88): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(1513,86): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(1461,1): warning C4267:  'initializing': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(3441,54): warning C4267:  'function': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(3435,1): warning C4334:  '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(4244,75): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(4292,41): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(4372,59): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\lodepng.cu(5312,1): warning C4267:  'initializing': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\Users\dgilbe9\source\repos\lab_1\lab_1\test_equality.c(25,21): warning C4018:  '<': signed/unsigned mismatch
+  lab_1.vcxproj -> C:\Users\dgilbe9\source\repos\lab_1\x64\Debug\lab_1.exe

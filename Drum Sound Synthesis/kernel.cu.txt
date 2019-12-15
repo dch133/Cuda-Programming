@@ -1,0 +1,225 @@
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#include <time.h> 
+#include <stdio.h>
+#include <stdlib.h>
+
+
+#define THREAD_COUNT 16
+#define BLOCK_COUNT 1
+#define DIM 4
+
+
+void printArray(float* a)
+{
+	for (int i = 0; i < DIM; i++)
+	{
+		for (int j = 0; j < DIM; j++)
+			printf("%f ", a[i * DIM + j]);
+		printf("\n");
+	}
+	printf("\n");
+}
+
+void arrayCopy(float* from, float* to) {
+	for (int i = 0; i < DIM * DIM; i++) 
+		to[i] = from[i];
+}
+
+void synthesisSerial(float* u, float* u1, float* u2, int iterations, int thread_count)
+{
+	const float G = 0.75;
+	const float ETA = 0.0002;
+	const float RHO = 0.5;
+
+	u1[DIM / 2 * DIM + DIM / 2] = 1.0;
+
+	for (int k = 0; k < iterations; k += 1)
+	{
+		for (int i = 0; i < (DIM) * (DIM); i += thread_count)
+		{
+			int row = i / (DIM);
+			int col = i % (DIM);
+			int offset = row * DIM + col;
+			if (row == 0 || col == 0) continue;
+
+
+			//Update Inner
+			u[offset] =
+				RHO * (u1[(row - 1) * DIM + col] +
+					u1[(row + 1) * DIM + col] +
+					u1[row * DIM + col - 1] +
+					u1[row * DIM + col + 1] -
+					4 * u1[offset]) +
+				2 * u1[offset] -
+				(1 - ETA) * u2[offset];
+
+			u[offset] = u[offset] / (1 + ETA);
+		}
+
+		//Update Sides 
+		for (int j = 1; j < DIM - 1; j++) {
+			u[0 * DIM + j] = G * u[1 * DIM + j];
+			u[(DIM - 1) * DIM + j] = G * u[(DIM - 2) * DIM + j];
+			u[j * DIM + 0] = G * u[j * DIM + 1];
+			u[j * DIM + (DIM - 1)] = G * u[j * DIM + (DIM - 2)];
+		}
+
+		//Update Corners 
+		u[0] = G * u[1 * DIM + 0];
+		u[(DIM - 1) * DIM] = G * u[(DIM - 2) * DIM + 0];
+		u[(DIM - 1)] = G * u[DIM - 2];
+		u[(DIM - 1) * DIM + (DIM - 1)] = G * u[(DIM - 1) * DIM + (DIM - 2)];
+
+		// Grid update step
+		arrayCopy(u1, u2);
+		arrayCopy(u, u1);
+
+		printArray(u);
+		printf("%f\n", u[DIM / 2 * DIM + DIM / 2]);
+
+	}
+}
+
+__global__ void synthesisMiddleParallel(float* u, float* u1, float* u2)
+{
+	const float G = 0.75;
+	const float ETA = 0.0002;
+	const float RHO = 0.5;
+
+	int threadOffset = (blockIdx.x * blockDim.x + threadIdx.x);
+
+	for (int i = threadOffset; i < (DIM) * (DIM); i += THREAD_COUNT)
+	{
+		int row = i / (DIM);
+		int col = i % (DIM);
+		int offset = row * DIM + col;
+		if (row == 0 || col == 0) continue;
+			   
+		u[offset] =
+			RHO * (u1[(row - 1) * DIM + col] +
+				u1[(row + 1) * DIM + col] +
+				u1[row * DIM + col - 1] +
+				u1[row * DIM + col + 1] -
+				4 * u1[offset]) +
+				2 * u1[offset] -
+				(1 - ETA) * u2[offset];
+
+		u[offset] = u[offset] / (1 + ETA);
+	}
+}
+
+__global__ void synthesisSidesParallel(float* u, float* u1, float* u2)
+{
+	const float G = 0.75;
+	const float ETA = 0.0002;
+	const float RHO = 0.5;
+
+	//Update Sides 
+	for (int j = 1; j < DIM - 1; j++) 
+	{
+		u[0 * DIM + j] = G * u[1 * DIM + j];
+		u[(DIM - 1) * DIM + j] = G * u[(DIM - 2) * DIM + j];
+		u[j * DIM + 0] = G * u[j * DIM + 1];
+		u[j * DIM + (DIM - 1)] = G * u[j * DIM + (DIM - 2)];
+	}
+
+}
+
+void synthesisParallel(float* d_u, float* d_u1, float* d_u2, int iterations)
+{		
+	const float G = 0.75;
+	const float ETA = 0.0002;
+	const float RHO = 0.5;
+
+	d_u1[DIM / 2 * DIM + DIM / 2] = 1.0; // drum hit
+
+	for (int k = 0; k < iterations; k += 1)
+	{
+		synthesisMiddleParallel << < BLOCK_COUNT, THREAD_COUNT >> > (d_u, d_u1, d_u2);
+		cudaDeviceSynchronize();
+		synthesisSidesParallel << < BLOCK_COUNT, THREAD_COUNT >> > (d_u, d_u1, d_u2);
+		cudaDeviceSynchronize();
+
+		//Update Corners 
+		d_u[0] = G * d_u[1 * DIM + 0];
+		d_u[(DIM - 1) * DIM] = G * d_u[(DIM - 2) * DIM + 0];
+		d_u[(DIM - 1)] = G * d_u[DIM - 2];
+		d_u[(DIM - 1) * DIM + (DIM - 1)] = G * d_u[(DIM - 1) * DIM + (DIM - 2)];
+
+		// Grid update step in serial
+		for (int i = 0; i < DIM * DIM; i++) 
+			d_u2[i] = d_u1[i];
+		
+
+		for (int i = 0; i < DIM * DIM; i++) 
+			d_u1[i] = d_u[i];
+		
+		//printf("%f\n", d_u[DIM / 2 * DIM + DIM / 2]);
+
+		// Save result to file
+		// FILE* fp;
+		// fp = fopen("Output.txt", "w");// "w" means that we are going to write on this file
+		// for (int i = 0; i < DIM; i++) {
+		// 	for (int j = 0; j < DIM; j++) {
+		// 		fprintf(fp, "%f ", d_u[i * DIM + j]);
+		// 	}
+		// }
+		// fclose(fp);
+	}
+}
+
+
+void executeSynthesis()
+{
+	int iterations = 20;
+
+	float* d_u;
+	float* d_u1;
+	float* d_u2;
+
+
+	d_u = (float*)malloc(DIM * DIM * sizeof(float));
+	cudaMallocManaged((void**)& d_u, DIM * DIM * sizeof(float));
+
+	d_u1 = (float*)malloc(DIM * DIM * sizeof(float));
+	cudaMallocManaged((void**)& d_u1, (DIM * DIM * sizeof(float)));
+
+	d_u2 = (float*)malloc(DIM * DIM * sizeof(float));
+	cudaMallocManaged((void**)& d_u2, (DIM * DIM * sizeof(float)));
+
+	cudaMemset(d_u, 0, DIM * DIM * sizeof(float));
+	cudaMemset(d_u1, 0, DIM * DIM * sizeof(float));
+	cudaMemset(d_u2, 0, DIM * DIM * sizeof(float));
+
+	//cudaEvent_t start, stop;
+	//cudaEventCreate(&start);
+	//cudaEventCreate(&stop);
+	/*clock_t start, end;
+	double cpu_time_used;
+
+	start = clock();*/
+
+	//cudaEventRecord(start);
+	//synthesisSerial(d_u, d_u1, d_u2, iterations, 1);
+	synthesisParallel(d_u, d_u1, d_u2, iterations);
+
+	//cudaEventRecord(stop);
+	//cudaEventSynchronize(stop);
+	//end = clock();
+	//cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+	//float milliseconds = 0;
+	//cudaEventElapsedTime(&milliseconds, start, stop);
+	//printf("%f", milliseconds);
+	//memcpy(u, d_u, sizeof(d_u));
+	//printArray(d_u);
+	printf("%f\n", d_u[DIM / 2 * DIM + DIM / 2]);
+
+
+}
+
+int main()
+{
+	executeSynthesis();
+}
